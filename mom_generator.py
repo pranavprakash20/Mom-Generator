@@ -10,12 +10,13 @@ import re
 
 
 class MomGenerator:
-    def __init__(self, meeting_recording):
+    def __init__(self, meeting_recording, model):
         self.meeting_recording = meeting_recording
         self.video_content = None
         self.audio_content = None
         self.audio_file = "converted_audio.wav"
         self.summary = ""
+        self.model = model
 
     def create_mom(self):
         # Load the recording
@@ -36,7 +37,7 @@ class MomGenerator:
         with open('transcript.txt', 'r') as file:
             text = file.read()
 
-        if model == "bart":
+        if self.model == "bart":
             # Load the model and tokenizer
             model_name = "facebook/bart-large-cnn"
             model = BartForConditionalGeneration.from_pretrained(model_name)
@@ -48,37 +49,37 @@ class MomGenerator:
                                          early_stopping=True)
             self.summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
-        elif model == "nltk":
+        elif self.model == "nltk":
             sentence_list = nltk.sent_tokenize(text)
-        text = re.sub(r'\[[0-9]*\]', ' ', text)
-        text = re.sub(r'\s+', ' ', text)
-        # Removing special characters and digits
-        formatted_article_text = re.sub('[^a-zA-Z]', ' ', text )
-        formatted_article_text = re.sub(r'\s+', ' ', formatted_article_text)
-        stopwords = nltk.corpus.stopwords.words('english')
-        
-        word_frequencies = {}
-        for word in nltk.word_tokenize(formatted_article_text):
-            if word not in stopwords:
-                if word not in word_frequencies.keys():
-                    word_frequencies[word] = 1
-                else:
-                    word_frequencies[word] += 1
-            maximum_frequncy = max(word_frequencies.values())
-        for word in word_frequencies.keys():
-            word_frequencies[word] = (word_frequencies[word]/maximum_frequncy)
-            sentence_scores = {}
-        for sent in sentence_list:
-            for word in nltk.word_tokenize(sent.lower()):
-                if word in word_frequencies.keys():
-                    if len(sent.split(' ')) < 30:
-                        if sent not in sentence_scores.keys():
-                            sentence_scores[sent] = word_frequencies[word]
-                        else:
-                            sentence_scores[sent] += word_frequencies[word]
-        summary_sentences = heapq.nlargest(100, sentence_scores, key=sentence_scores.get)
-        
-        self.summary = ' '.join(summary_sentences)
+            text = re.sub(r'\[[0-9]*\]', ' ', text)
+            text = re.sub(r'\s+', ' ', text)
+            # Removing special characters and digits
+            formatted_article_text = re.sub('[^a-zA-Z]', ' ', text )
+            formatted_article_text = re.sub(r'\s+', ' ', formatted_article_text)
+            stopwords = nltk.corpus.stopwords.words('english')
+            
+            word_frequencies = {}
+            for word in nltk.word_tokenize(formatted_article_text):
+                if word not in stopwords:
+                    if word not in word_frequencies.keys():
+                        word_frequencies[word] = 1
+                    else:
+                        word_frequencies[word] += 1
+                maximum_frequncy = max(word_frequencies.values())
+            for word in word_frequencies.keys():
+                word_frequencies[word] = (word_frequencies[word]/maximum_frequncy)
+                sentence_scores = {}
+            for sent in sentence_list:
+                for word in nltk.word_tokenize(sent.lower()):
+                    if word in word_frequencies.keys():
+                        if len(sent.split(' ')) < 30:
+                            if sent not in sentence_scores.keys():
+                                sentence_scores[sent] = word_frequencies[word]
+                            else:
+                                sentence_scores[sent] += word_frequencies[word]
+            summary_sentences = heapq.nlargest(100, sentence_scores, key=sentence_scores.get)
+            
+            self.summary = ' '.join(summary_sentences)
         # Else proceed with spacy
         else:
             nlp = spacy.load('en_core_web_sm')
@@ -123,6 +124,6 @@ class MomGenerator:
         self.video_content = mp.VideoFileClip(self.meeting_recording)
 
 
-mom = MomGenerator("rhgs-ci.mp4")
+mom = MomGenerator("file_name", "model_name")
 print(mom.create_mom())
 
